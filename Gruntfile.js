@@ -5,7 +5,7 @@
 // https://github.com/gruntjs/grunt-contrib-copy
 // https://github.com/gruntjs/grunt-contrib-watch
 
-var path = require('path'), fs=require('fs');
+var path = require('path'), fs = require('fs');
 
 function fileByType(startPath,filter,callback){
     if (!fs.existsSync(startPath)){
@@ -28,7 +28,6 @@ module.exports = function(grunt) {
     
     const jsFolder = './assets/js/';
     const cssFolder = './assets/css/';
-    const fs = require('fs');
     const FILES = {};
     const VERSION = [];
     const config = {
@@ -41,8 +40,7 @@ module.exports = function(grunt) {
         clean: {
             build: [
                 config.buildFolder + '/js/*', 
-                config.buildFolder + '/css/*', 
-                config.buildFolder + '/' + config.versionFile
+                config.buildFolder + '/css/*'
             ]
         },
         uglify : {
@@ -70,11 +68,16 @@ module.exports = function(grunt) {
                         src: ['*.css', '!*.min.css'],
                         dest: config.buildFolder + '/css',
                         ext: '.css'
-                    },
+                    }
+                ]
+            },
+            theme: {
+                files: [
                     {
                         expand: true,
-                        cwd: 'theme/css',
-                        src: ['*.css', '!*.min.css'],
+                        flatten: true,
+                        cwd: 'theme/',
+                        src: ['**/*.css', '!*.min.css'],
                         dest: config.buildFolder + '/css',
                         ext: '.css'
                     }
@@ -89,7 +92,7 @@ module.exports = function(grunt) {
                 options: {
                     tag: 'hash',
                     hashLength: 8,
-                    tasks: ['uglify:files', 'cssmin:main']
+                    tasks: ['uglify:files', 'cssmin:main', 'cssmin:theme']
                 }
             }
         },
@@ -101,10 +104,19 @@ module.exports = function(grunt) {
                 dest: config.buildFolder + '/',
             },
             theme: {
+                cwd: 'theme/',
+                src: ['**/*.css'],
+                dest: 'build/css',
                 expand: true,
-                cwd: 'theme/*/css/*',
-                src: '**',
-                dest: config.buildFolder + '/'
+                flatten: true,
+                /*rename: function (dest, src) {
+                    let split = src.split(".");
+                    if(split[split.length - 1] === "css"){
+                        return dest + '/' + split[0] + '-dev.' + split[split.length - 1] 
+                    }else{
+                        return dest + '/' + src;
+                    }
+                },*/
             }
         },
         watch: {
@@ -135,9 +147,11 @@ module.exports = function(grunt) {
 
         // Clean build folder
         var done = this.async();
-        grunt.util.spawn({cmd: 'grunt clean'}, function(e){
+        grunt.util.spawn({cmd: 'grunt', args: ['clean']}, function(e){
+            grunt.log.writeln('Clean')
             done();
         });
+        /*grunt.task.run('clean');*/
 
         // Build FILES array and VERSION array
         fs.readdirSync(jsFolder).forEach(file => {
@@ -151,7 +165,7 @@ module.exports = function(grunt) {
         });
 
         fileByType('./theme',/\.css$/,function(filename){
-            console.log('-- found: ',filename);
+            filename = filename.replace(/\\/gi, '/');
             let split = filename.split("\\");
 
             FILES[String(config.buildFolder + "/css/" + split[split.length - 1])] = [String(filename)];
@@ -166,6 +180,7 @@ module.exports = function(grunt) {
         }
         var json = JSON.stringify(VERSION);
         fs.writeFile(config.buildFolder + '/' + config.versionFile, json, (err) => {
+            console.log("Version.json as been saved")
             if (err) throw err;
         });
 
@@ -177,8 +192,8 @@ module.exports = function(grunt) {
         if(action === "added"){
             let split = filepath.split("\\");
             if(split[0] === config.assetFolder){
-                let dest = filepath.replace(config.assetFolder, config.buildFolder);
-                FILES[dest] = [filepath];
+                let destination = filepath.replace(config.assetFolder, config.buildFolder);
+                FILES[destination] = [filepath];
             }
         }
         
